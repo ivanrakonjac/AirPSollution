@@ -1,9 +1,17 @@
 package com.ika.airpsollution.ui.home;
 
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.InputFilter;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.ListView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -12,17 +20,100 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 import com.ika.airpsollution.R;
+import com.ika.airpsollution.messages.Message;
 
 public class HomeFragment extends Fragment {
 
     private HomeViewModel homeViewModel;
 
-    public View onCreateView(@NonNull LayoutInflater inflater,
-                             ViewGroup container, Bundle savedInstanceState) {
-        homeViewModel =
-                new ViewModelProvider(this).get(HomeViewModel.class);
+    public static final String ANONYMOUS = "anonymous";
+    public static final int DEFAULT_MSG_LENGTH_LIMIT = 1000;
+
+    private ListView mMessageListView;
+    //    private MessageAdapter mMessageAdapter;
+    private ProgressBar mProgressBar;
+    private ImageButton mPhotoPickerButton;
+    private EditText mMessageEditText;
+    private Button mSendButton;
+
+    private String mUsername;
+
+    private FirebaseDatabase mFirebaseDatabase;
+    private DatabaseReference mMessagesDatabaseReference;
+
+    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+
+        homeViewModel = new ViewModelProvider(this).get(HomeViewModel.class);
         View root = inflater.inflate(R.layout.fragment_home, container, false);
+
+        mUsername = ANONYMOUS;
+
+        // Initialize Firebase components
+        mFirebaseDatabase = FirebaseDatabase.getInstance("https://airpsollution-default-rtdb.europe-west1.firebasedatabase.app");
+        mMessagesDatabaseReference = mFirebaseDatabase.getReference("messages");
+
+        // Initialize references to views
+        mProgressBar = (ProgressBar) root.findViewById(R.id.progressBar);
+        mMessageListView = (ListView) root.findViewById(R.id.messageListView);
+        mPhotoPickerButton = (ImageButton) root.findViewById(R.id.photoPickerButton);
+        mMessageEditText = (EditText) root.findViewById(R.id.messageEditText);
+        mSendButton = (Button) root.findViewById(R.id.sendButton);
+
+        // Initialize message ListView and its adapter
+//        List<FriendlyMessage> friendlyMessages = new ArrayList<>();
+//        mMessageAdapter = new MessageAdapter(this, R.layout.item_message, friendlyMessages);
+//        mMessageListView.setAdapter(mMessageAdapter);
+
+        // Initialize progress bar
+        mProgressBar.setVisibility(ProgressBar.INVISIBLE);
+
+        // ImagePickerButton shows an image picker to upload a image for a message
+        mPhotoPickerButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // TODO: Fire an intent to show an image picker
+            }
+        });
+
+        // Enable Send button when there's text to send
+        mMessageEditText.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+                if (charSequence.toString().trim().length() > 0) {
+                    mSendButton.setEnabled(true);
+                } else {
+                    mSendButton.setEnabled(false);
+                }
+            }
+
+            @Override
+            public void afterTextChanged(Editable editable) {
+            }
+        });
+        mMessageEditText.setFilters(new InputFilter[]{new InputFilter.LengthFilter(DEFAULT_MSG_LENGTH_LIMIT)});
+
+        // Send button sends a message and clears the EditText
+        mSendButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                Message newMessage = new Message(mMessageEditText.getText().toString(), mUsername, null);
+                mMessagesDatabaseReference.push().setValue(newMessage);
+
+//                mMessagesDatabaseReference.push().setValue(newMessage);
+
+                // Clear input box
+                mMessageEditText.setText("");
+            }
+        });
+
 //        final TextView textView = root.findViewById(R.id.text_home);
 //        homeViewModel.getText().observe(getViewLifecycleOwner(), new Observer<String>() {
 //            @Override
