@@ -20,10 +20,17 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 
+import com.google.firebase.database.ChildEventListener;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.ika.airpsollution.R;
 import com.ika.airpsollution.messages.Message;
+import com.ika.airpsollution.messages.MessageAdapter;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class HomeFragment extends Fragment {
 
@@ -33,7 +40,7 @@ public class HomeFragment extends Fragment {
     public static final int DEFAULT_MSG_LENGTH_LIMIT = 1000;
 
     private ListView mMessageListView;
-    //    private MessageAdapter mMessageAdapter;
+    private MessageAdapter mMessageAdapter;
     private ProgressBar mProgressBar;
     private ImageButton mPhotoPickerButton;
     private EditText mMessageEditText;
@@ -43,6 +50,7 @@ public class HomeFragment extends Fragment {
 
     private FirebaseDatabase mFirebaseDatabase;
     private DatabaseReference mMessagesDatabaseReference;
+    private ChildEventListener mChildEventListener;
 
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
 
@@ -62,10 +70,10 @@ public class HomeFragment extends Fragment {
         mMessageEditText = (EditText) root.findViewById(R.id.messageEditText);
         mSendButton = (Button) root.findViewById(R.id.sendButton);
 
-        // Initialize message ListView and its adapter
-//        List<FriendlyMessage> friendlyMessages = new ArrayList<>();
-//        mMessageAdapter = new MessageAdapter(this, R.layout.item_message, friendlyMessages);
-//        mMessageListView.setAdapter(mMessageAdapter);
+         // Initialize message ListView and its adapter
+        List<Message> friendlyMessages = new ArrayList<>();
+        mMessageAdapter = new MessageAdapter(this.getContext(), R.layout.item_message, friendlyMessages);
+        mMessageListView.setAdapter(mMessageAdapter);
 
         // Initialize progress bar
         mProgressBar.setVisibility(ProgressBar.INVISIBLE);
@@ -107,12 +115,40 @@ public class HomeFragment extends Fragment {
                 Message newMessage = new Message(mMessageEditText.getText().toString(), mUsername, null);
                 mMessagesDatabaseReference.push().setValue(newMessage);
 
-//                mMessagesDatabaseReference.push().setValue(newMessage);
-
                 // Clear input box
                 mMessageEditText.setText("");
             }
         });
+
+        mChildEventListener = new ChildEventListener() {
+            @Override
+            public void onChildAdded(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+                Message message = snapshot.getValue(Message.class);
+                mMessageAdapter.add(message);
+            }
+
+            @Override
+            public void onChildChanged(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+
+            }
+
+            @Override
+            public void onChildRemoved(@NonNull DataSnapshot snapshot) {
+
+            }
+
+            @Override
+            public void onChildMoved(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+
+            }
+        };
+
+        mMessagesDatabaseReference.addChildEventListener(mChildEventListener);
 
 //        final TextView textView = root.findViewById(R.id.text_home);
 //        homeViewModel.getText().observe(getViewLifecycleOwner(), new Observer<String>() {
