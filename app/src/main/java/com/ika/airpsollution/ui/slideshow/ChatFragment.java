@@ -25,6 +25,7 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.ika.airpsollution.MainActivity;
 import com.ika.airpsollution.R;
+import com.ika.airpsollution.db.FirebaseDB;
 import com.ika.airpsollution.messages.Message;
 import com.ika.airpsollution.messages.MessageAdapter;
 
@@ -44,18 +45,12 @@ public class ChatFragment extends Fragment {
     private EditText mMessageEditText;
     private Button mSendButton;
 
-    private FirebaseDatabase mFirebaseDatabase;
-    private DatabaseReference mMessagesDatabaseReference;
     private ChildEventListener mChildEventListener;
 
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
 
         chatViewModel = new ViewModelProvider(this).get(ChatViewModel.class);
         View root = inflater.inflate(R.layout.fragment_chat, container, false);
-
-        // Initialize Firebase components
-        mFirebaseDatabase = FirebaseDatabase.getInstance("https://airpsollution-default-rtdb.europe-west1.firebasedatabase.app");
-        mMessagesDatabaseReference = mFirebaseDatabase.getReference("messages");
 
         // Initialize references to views
         mProgressBar = (ProgressBar) root.findViewById(R.id.progressBar);
@@ -107,7 +102,7 @@ public class ChatFragment extends Fragment {
             public void onClick(View view) {
 
                 Message newMessage = new Message(mMessageEditText.getText().toString(), MainActivity.userName, null);
-                mMessagesDatabaseReference.push().setValue(newMessage);
+                FirebaseDB.getMessagesDbReference().push().setValue(newMessage);
 
                 // Clear input box
                 mMessageEditText.setText("");
@@ -142,7 +137,7 @@ public class ChatFragment extends Fragment {
             }
         };
 
-        mMessagesDatabaseReference.addChildEventListener(mChildEventListener);
+        FirebaseDB.getMessagesDbReference().addChildEventListener(mChildEventListener);
 
 //        final TextView textView = root.findViewById(R.id.text_slideshow);
 //        slideshowViewModel.getText().observe(getViewLifecycleOwner(), new Observer<String>() {
