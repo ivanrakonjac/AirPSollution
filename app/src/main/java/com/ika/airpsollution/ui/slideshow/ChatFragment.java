@@ -1,5 +1,7 @@
 package com.ika.airpsollution.ui.slideshow;
 
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.InputFilter;
@@ -12,30 +14,48 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.ProgressBar;
+import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 
+import com.firebase.ui.auth.FirebaseAuthUIActivityResultContract;
+import com.firebase.ui.auth.data.model.FirebaseAuthUIAuthenticationResult;
+import com.google.android.gms.tasks.Continuation;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
 import com.ika.airpsollution.MainActivity;
 import com.ika.airpsollution.R;
 import com.ika.airpsollution.db.FirebaseDB;
+import com.ika.airpsollution.db.FirebaseStorageDB;
 import com.ika.airpsollution.messages.Message;
 import com.ika.airpsollution.messages.MessageAdapter;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executor;
+
+import static android.app.Activity.RESULT_CANCELED;
+import static android.app.Activity.RESULT_OK;
+import static androidx.core.app.ActivityCompat.finishAffinity;
 
 public class ChatFragment extends Fragment {
 
     private ChatViewModel chatViewModel;
 
     public static final int DEFAULT_MSG_LENGTH_LIMIT = 1000;
-
+    private static final int RC_PHOTO_PICKER =  2;
 
     private ProgressBar progressBar;
     private ImageButton photoPickerButton;
@@ -43,9 +63,51 @@ public class ChatFragment extends Fragment {
     private Button sendButton;
 
     private static ChildEventListener childEventListener;
+    private FirebaseStorage firebaseStorage;
 
     private ListView messageListView;
     private static MessageAdapter messageAdapter;
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if(requestCode == RC_PHOTO_PICKER && resultCode == RESULT_OK){
+
+            Uri selectedImageUri = data.getData();
+            StorageReference photoRef = FirebaseStorageDB.getChatPhotosReference().child(selectedImageUri.getLastPathSegment());
+
+            Toast.makeText(getContext(),"Izabrana slika " + selectedImageUri.getLastPathSegment(),Toast.LENGTH_SHORT).show();
+
+            // Upload file to Firebase Storage
+
+            UploadTask uploadTask = photoRef.putFile(selectedImageUri);
+
+            Task<Uri> urlTask = uploadTask.continueWithTask(new Continuation<UploadTask.TaskSnapshot, Task<Uri>>() {
+                @Override
+                public Task<Uri> then(@NonNull Task<UploadTask.TaskSnapshot> task) throws Exception {
+                    if (!task.isSuccessful()) {
+                        throw task.getException();
+                    }
+
+                    // Continue with the task to get the download URL
+                    return photoRef.getDownloadUrl();
+                }
+            }).addOnCompleteListener(new OnCompleteListener<Uri>() {
+                @Override
+                public void onComplete(@NonNull Task<Uri> task) {
+                    if (task.isSuccessful()) {
+                        Uri downloadUri = task.getResult();
+                        Message message = new Message(null, MainActivity.userName, downloadUri.toString());
+                        FirebaseDB.getMessagesDbReference().push().setValue(message);
+                    } else {
+                        // Handle failures
+                        // ...
+                    }
+                }
+            });
+
+        }
+    }
 
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
 
@@ -71,7 +133,10 @@ public class ChatFragment extends Fragment {
         photoPickerButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                // TODO: Fire an intent to show an image picker
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                intent.setType("image/jpeg");
+                intent.putExtra(Intent.EXTRA_LOCAL_ONLY, true);
+                startActivityForResult(Intent.createChooser(intent, "Complete action using"), RC_PHOTO_PICKER);
             }
         });
 
