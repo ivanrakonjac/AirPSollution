@@ -28,6 +28,8 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.ika.airpsollution.messages.Message;
+import com.ika.airpsollution.ui.home.HomeFragment;
+import com.ika.airpsollution.ui.slideshow.ChatFragment;
 
 import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
@@ -100,8 +102,7 @@ public class MainActivity extends AppCompatActivity {
         NavigationView navigationView = findViewById(R.id.nav_view);
         // Passing each menu ID as a set of Ids because each
         // menu should be considered as top level destinations.
-        mAppBarConfiguration = new AppBarConfiguration.Builder(
-                R.id.nav_home, R.id.nav_gallery, R.id.nav_chat)
+        mAppBarConfiguration = new AppBarConfiguration.Builder(R.id.nav_home, R.id.nav_gallery, R.id.nav_chat)
                 .setDrawerLayout(drawer)
                 .build();
         NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment);
@@ -141,6 +142,10 @@ public class MainActivity extends AppCompatActivity {
             case R.id.action_logout:
                 AuthUI.getInstance().signOut(this);
 //                finishAffinity(); Imao sam bag pri logovanju kad ovo ubacim
+
+                ChatFragment.clearMessageAdapter();
+                ChatFragment.detachDatabaseReadListener();
+
                 signInLauncher.launch(signInIntent);
             default:
                 return super.onOptionsItemSelected(item);

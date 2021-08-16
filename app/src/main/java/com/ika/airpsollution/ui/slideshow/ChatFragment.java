@@ -21,8 +21,6 @@ import androidx.lifecycle.ViewModelProvider;
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
 import com.ika.airpsollution.MainActivity;
 import com.ika.airpsollution.R;
 import com.ika.airpsollution.db.FirebaseDB;
@@ -38,14 +36,16 @@ public class ChatFragment extends Fragment {
 
     public static final int DEFAULT_MSG_LENGTH_LIMIT = 1000;
 
-    private ListView mMessageListView;
-    private MessageAdapter mMessageAdapter;
-    private ProgressBar mProgressBar;
-    private ImageButton mPhotoPickerButton;
-    private EditText mMessageEditText;
-    private Button mSendButton;
 
-    private ChildEventListener mChildEventListener;
+    private ProgressBar progressBar;
+    private ImageButton photoPickerButton;
+    private EditText messageEditText;
+    private Button sendButton;
+
+    private static ChildEventListener childEventListener;
+
+    private ListView messageListView;
+    private static MessageAdapter messageAdapter;
 
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
 
@@ -53,22 +53,22 @@ public class ChatFragment extends Fragment {
         View root = inflater.inflate(R.layout.fragment_chat, container, false);
 
         // Initialize references to views
-        mProgressBar = (ProgressBar) root.findViewById(R.id.progressBar);
-        mMessageListView = (ListView) root.findViewById(R.id.messageListView);
-        mPhotoPickerButton = (ImageButton) root.findViewById(R.id.photoPickerButton);
-        mMessageEditText = (EditText) root.findViewById(R.id.messageEditText);
-        mSendButton = (Button) root.findViewById(R.id.sendButton);
+        progressBar = (ProgressBar) root.findViewById(R.id.progressBar);
+        messageListView = (ListView) root.findViewById(R.id.messageListView);
+        photoPickerButton = (ImageButton) root.findViewById(R.id.photoPickerButton);
+        messageEditText = (EditText) root.findViewById(R.id.messageEditText);
+        sendButton = (Button) root.findViewById(R.id.sendButton);
 
         // Initialize message ListView and its adapter
-        List<Message> friendlyMessages = new ArrayList<>();
-        mMessageAdapter = new MessageAdapter(this.getContext(), R.layout.item_message, friendlyMessages);
-        mMessageListView.setAdapter(mMessageAdapter);
+        List<Message> messageList = new ArrayList<>();
+        messageAdapter = new MessageAdapter(this.getContext(), R.layout.item_message, messageList);
+        messageListView.setAdapter(messageAdapter);
 
         // Initialize progress bar
-        mProgressBar.setVisibility(ProgressBar.INVISIBLE);
+        progressBar.setVisibility(ProgressBar.INVISIBLE);
 
         // ImagePickerButton shows an image picker to upload a image for a message
-        mPhotoPickerButton.setOnClickListener(new View.OnClickListener() {
+        photoPickerButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 // TODO: Fire an intent to show an image picker
@@ -76,7 +76,7 @@ public class ChatFragment extends Fragment {
         });
 
         // Enable Send button when there's text to send
-        mMessageEditText.addTextChangedListener(new TextWatcher() {
+        messageEditText.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
             }
@@ -84,9 +84,9 @@ public class ChatFragment extends Fragment {
             @Override
             public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
                 if (charSequence.toString().trim().length() > 0) {
-                    mSendButton.setEnabled(true);
+                    sendButton.setEnabled(true);
                 } else {
-                    mSendButton.setEnabled(false);
+                    sendButton.setEnabled(false);
                 }
             }
 
@@ -94,50 +94,22 @@ public class ChatFragment extends Fragment {
             public void afterTextChanged(Editable editable) {
             }
         });
-        mMessageEditText.setFilters(new InputFilter[]{new InputFilter.LengthFilter(DEFAULT_MSG_LENGTH_LIMIT)});
+        messageEditText.setFilters(new InputFilter[]{new InputFilter.LengthFilter(DEFAULT_MSG_LENGTH_LIMIT)});
 
         // Send button sends a message and clears the EditText
-        mSendButton.setOnClickListener(new View.OnClickListener() {
+        sendButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
 
-                Message newMessage = new Message(mMessageEditText.getText().toString(), MainActivity.userName, null);
+                Message newMessage = new Message(messageEditText.getText().toString(), MainActivity.userName, null);
                 FirebaseDB.getMessagesDbReference().push().setValue(newMessage);
 
                 // Clear input box
-                mMessageEditText.setText("");
+                messageEditText.setText("");
             }
         });
 
-        mChildEventListener = new ChildEventListener() {
-            @Override
-            public void onChildAdded(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
-                Message message = snapshot.getValue(Message.class);
-                mMessageAdapter.add(message);
-            }
-
-            @Override
-            public void onChildChanged(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
-
-            }
-
-            @Override
-            public void onChildRemoved(@NonNull DataSnapshot snapshot) {
-
-            }
-
-            @Override
-            public void onChildMoved(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
-
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-
-            }
-        };
-
-        FirebaseDB.getMessagesDbReference().addChildEventListener(mChildEventListener);
+        attachDatabaseReadListener();
 
 //        final TextView textView = root.findViewById(R.id.text_slideshow);
 //        slideshowViewModel.getText().observe(getViewLifecycleOwner(), new Observer<String>() {
@@ -147,5 +119,65 @@ public class ChatFragment extends Fragment {
 //            }
 //        });
         return root;
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        attachDatabaseReadListener();
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        messageAdapter.clear();
+        detachDatabaseReadListener();
+    }
+
+    public static void attachDatabaseReadListener() {
+        if (childEventListener == null) {
+            childEventListener = new ChildEventListener() {
+                @Override
+                public void onChildAdded(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+                    Message message = snapshot.getValue(Message.class);
+                    messageAdapter.add(message);
+                }
+
+                @Override
+                public void onChildChanged(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+
+                }
+
+                @Override
+                public void onChildRemoved(@NonNull DataSnapshot snapshot) {
+
+                }
+
+                @Override
+                public void onChildMoved(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError error) {
+
+                }
+            };
+
+            FirebaseDB.getMessagesDbReference().addChildEventListener(childEventListener);
+        }
+    }
+
+    public static void detachDatabaseReadListener() {
+        if (childEventListener != null) {
+            FirebaseDB.getMessagesDbReference().removeEventListener(childEventListener);
+            childEventListener = null;
+        }
+    }
+
+    public static void clearMessageAdapter(){
+        if(messageAdapter != null){
+            messageAdapter.clear();
+        }
     }
 }
