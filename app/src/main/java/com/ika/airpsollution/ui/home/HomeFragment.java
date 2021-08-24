@@ -43,6 +43,7 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.ika.airpsollution.R;
 import com.ika.airpsollution.messages.Message;
 import com.ika.airpsollution.messages.MessageAdapter;
+import com.ika.airpsollution.rest.AqicnService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -131,6 +132,9 @@ public class HomeFragment extends Fragment {
 
             return false;
         };
+
+        AqicnService aqicnService = new AqicnService();
+        aqicnService.getAllStationss();
     }
 
     // Register the permissions callback, which handles the user's response to the

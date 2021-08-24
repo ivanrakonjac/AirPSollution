@@ -28,6 +28,7 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.ika.airpsollution.messages.Message;
+import com.ika.airpsollution.rest.AqicnService;
 import com.ika.airpsollution.ui.gallery.MapsFragment;
 import com.ika.airpsollution.ui.home.HomeFragment;
 import com.ika.airpsollution.ui.slideshow.ChatFragment;
