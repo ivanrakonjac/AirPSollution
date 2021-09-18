@@ -6,9 +6,7 @@ import retrofit2.Call;
 import retrofit2.http.GET;
 import retrofit2.http.Query;
 
-public interface AqicnAPI {
-
-    @GET("search/")
-    Call<JsonObject> getAllStationss(@Query("token") String token, @Query("keyword") String keyword);
-
+public interface AirVisualAPI {
+    @GET("states")
+    Call<JsonObject> getAllStations(@Query("country") String country, @Query("key") String key);
 }

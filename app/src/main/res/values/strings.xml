@@ -13,4 +13,7 @@
 
     <string name="sign_out">Sign Out</string>
     <string name="send_button_label">Send</string>
+
+    <string name="AirVisual_KEY">@string/AirVisual_API_KEY</string>
+    <string name="Aqicn_KEY">@string/Aqicn_API_KEY</string>
 </resources>

@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.text.Editable;
 import android.text.InputFilter;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -44,6 +45,8 @@ import com.ika.airpsollution.R;
 import com.ika.airpsollution.messages.Message;
 import com.ika.airpsollution.messages.MessageAdapter;
 import com.ika.airpsollution.rest.AqicnService;
+import com.ika.airpsollution.rest.MeasuringStation;
+import com.ika.airpsollution.ui.slideshow.ChatViewModel;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -52,8 +55,12 @@ import static com.google.android.gms.location.LocationServices.getFusedLocationP
 
 public class HomeFragment extends Fragment {
 
+    private HomeViewModel homeViewModel;
+    private AqicnService aqicnService = new AqicnService();;
+
     private FusedLocationProviderClient fusedLocationClient;
 
+    private SupportMapFragment mapFragment;
     private GoogleMap.OnMyLocationButtonClickListener locationButtonClickListener;
     private boolean permissionDenied = false;
     private GoogleMap map;
@@ -72,21 +79,23 @@ public class HomeFragment extends Fragment {
                 requestPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION);
             }
 
+            List<MeasuringStation> msList = HomeViewModel.getStationList();
+
+            for (MeasuringStation ms: msList) {
+                LatLng latLng = new LatLng(ms.lat, ms.lon);
+                googleMap.addMarker(new MarkerOptions().position(latLng).title(ms.name));
+                googleMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
+            }
+
             map.setMyLocationEnabled(true);
             map.setOnMyLocationButtonClickListener(locationButtonClickListener);
 
-            LatLng etf = new LatLng(44.8057225423691, 20.47609300860253);
-            googleMap.addMarker(new MarkerOptions().position(etf).title("Marker in ETF"));
-            googleMap.moveCamera(CameraUpdateFactory.newLatLng(etf));
+//            LatLng etf = new LatLng(44.8057225423691, 20.47609300860253);
+//            googleMap.addMarker(new MarkerOptions().position(etf).title("Marker in ETF"));
+//            googleMap.moveCamera(CameraUpdateFactory.newLatLng(etf));
 
-            LatLng tesla = new LatLng(44.805724150117754, 20.470684693983138);
-            googleMap.addMarker(new MarkerOptions().position(tesla).title("Marker in Tesla Museum"));
-            googleMap.moveCamera(CameraUpdateFactory.newLatLng(tesla));
-
-            LatLng curr = new LatLng(currentLatitude, currentLongitude);
-            googleMap.addMarker(new MarkerOptions().position(curr).title("Your position"));
-            googleMap.moveCamera(CameraUpdateFactory.newLatLng(curr));
         }
+
     };
 
     @Nullable
@@ -94,13 +103,25 @@ public class HomeFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
+
+        homeViewModel = new ViewModelProvider(this).get(HomeViewModel.class);
+
+        HomeViewModel.getMutableLiveData().observe(this.getViewLifecycleOwner(), new Observer<List<MeasuringStation>>() {
+            @Override
+            public void onChanged(List<MeasuringStation> measuringStations) {
+                if (mapFragment != null) {
+                    mapFragment.getMapAsync(callback);
+                }
+            }
+        });
+
         return inflater.inflate(R.layout.fragment_maps, container, false);
     }
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        SupportMapFragment mapFragment = (SupportMapFragment) getChildFragmentManager().findFragmentById(R.id.map);
+        mapFragment = (SupportMapFragment) getChildFragmentManager().findFragmentById(R.id.map);
 
         if (mapFragment != null) {
             mapFragment.getMapAsync(callback);
@@ -133,8 +154,8 @@ public class HomeFragment extends Fragment {
             return false;
         };
 
-        AqicnService aqicnService = new AqicnService();
         aqicnService.getAllStationss();
+
     }
 
     // Register the permissions callback, which handles the user's response to the

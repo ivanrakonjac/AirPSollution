@@ -3,10 +3,14 @@ package com.ika.airpsollution.rest;
 import android.util.Log;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.ika.airpsollution.ui.home.HomeViewModel;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.json.*;
 
 import okhttp3.OkHttpClient;
 import okhttp3.logging.HttpLoggingInterceptor;
@@ -17,9 +21,6 @@ import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 public class AqicnService{
-
-//    private static final String API_KEY = ""; //Trenutno za AirVisual
-//    private static final String BASE_URL = "http://api.airvisual.com/v2/"; //Trenutno za AirVisual
 
     private static final String API_KEY = "";
     private static final String BASE_URL = "https://api.waqi.info/";
@@ -39,8 +40,9 @@ public class AqicnService{
         aqicnAPI = retrofit.create(AqicnAPI.class);
     }
 
-    public void getAllStations(){
-        Call<JsonObject> call = aqicnAPI.getAllStations("Serbia", API_KEY);
+    public void getAllStationss() {
+
+        Call<JsonObject> call = aqicnAPI.getAllStationss(API_KEY, "Serbia");
 
         call.enqueue(new Callback<JsonObject>() {
 
@@ -49,50 +51,31 @@ public class AqicnService{
 
                 Log.d("#API-TESTING", response.body().toString());
 
-//                String pageName = response.body().getAsJsonObject("pageInfo").get("pageName").getAsString();
+                JsonArray data = response.body().getAsJsonArray("data");
+                Log.d("#API-TESTING", data.toString());
 
-                JsonArray states = response.body().getAsJsonArray("data");
-                for (int i = 0; i < states.size(); i++) {
-                    String state = states.get(i).getAsJsonObject().get("state").getAsString();
-                    Log.d("#API-TESTING", state);
+                for (JsonElement obj: data) {
+//                    Log.d("#API-TESTING", obj.toString());
+                    JsonObject  jobject = obj.getAsJsonObject();
+                    jobject = jobject.getAsJsonObject("station");
+                    JsonElement name = jobject.get("name");
+                    JsonElement geo = jobject.get("geo");
+                    String lat = geo.getAsJsonArray().get(0).toString();
+                    String lon = geo.getAsJsonArray().get(1).toString();
+                    Log.d("#API-TESTING", jobject.toString());
+                    Log.d("#API-TESTING", name.toString());
+                    Log.d("#API-TESTING", lat + " | " + lon);
+
+                    MeasuringStation ms = new MeasuringStation(name.toString(), Double.parseDouble(lat), Double.parseDouble(lon));
+                    HomeViewModel.addStation(ms);
                 }
-
 
             }
 
             @Override
             public void onFailure(Call<JsonObject> call, Throwable t) {
-                System.out.println("Evo me");
-            }
-        });
-    }
-
-
-    public void getAllStationss() {
-
-        Call<Object> call = aqicnAPI.getAllStationss(API_KEY, "Pančevo Vojlovica");
-
-        call.enqueue(new Callback<Object>() {
-
-            @Override
-            public void onResponse(Call<Object> call, Response<Object> response) {
-
-                Log.d("#API-TESTING", response.body().toString());
-
-//                String pageName = response.body().getAsJsonObject("pageInfo").get("pageName").getAsString();
-
-//                JsonArray states = response.body().getAsJsonArray("data");
-//                for (int i = 0; i < states.size(); i++) {
-//                    String state = states.get(i).getAsJsonObject().get("state").getAsString();
-//                    Log.d("#API-TESTING", state);
-//                }
-
-
-            }
-
-            @Override
-            public void onFailure(Call<Object> call, Throwable t) {
-                System.out.println("Evo me");
+                Log.d("Error", call.toString());
+                Log.d("Error", t.toString());
             }
         });
     }
