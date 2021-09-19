@@ -30,4 +30,16 @@ public class HomeViewModel extends ViewModel {
         return stationsData;
     }
 
+    public static void setMeasurements(int stationIndex, double[] measurments){
+        stationsList.get(stationIndex).setPm10(measurments);
+
+        Log.d("#MERENJA", stationsList.get(stationIndex).name);
+        stationsData.postValue(stationsList);
+    }
+
+    public static void clearStationsList(){
+        stationsList.clear();
+        stationsData.postValue(stationsList);
+    }
+
 }

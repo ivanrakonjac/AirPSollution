@@ -33,6 +33,7 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.CancellationTokenSource;
@@ -79,13 +80,35 @@ public class HomeFragment extends Fragment {
                 requestPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION);
             }
 
+            map.clear();
+
             List<MeasuringStation> msList = HomeViewModel.getStationList();
+
+            int brojac = 0;
 
             for (MeasuringStation ms: msList) {
                 LatLng latLng = new LatLng(ms.lat, ms.lon);
-                googleMap.addMarker(new MarkerOptions().position(latLng).title(ms.name));
+
+                brojac++;
+
+                double m = ms.getPm10(0);
+
+                String snippet =    "PM10: " + ms.getPm10(0) + " μg/m3 " +
+                                    "PM25: " + ms.getPm25(0) + "μg/m3";
+
+                if(ms.getPm10(0)> 60 || ms.getPm25(0) > 30){
+                    googleMap.addMarker(new MarkerOptions().position(latLng).title(ms.name).snippet(snippet)
+                            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)));
+                }else{
+                    googleMap.addMarker(new MarkerOptions().position(latLng).title(ms.name).snippet(snippet)
+                            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)));
+                }
+
                 googleMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
+                googleMap.animateCamera(CameraUpdateFactory.zoomTo( 6.0f ));
             }
+
+            Log.d("#LIFE-CYCLE", "onMapReady " + brojac);
 
             map.setMyLocationEnabled(true);
             map.setOnMyLocationButtonClickListener(locationButtonClickListener);
@@ -103,6 +126,8 @@ public class HomeFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
+
+        Log.d("#LIFE-CYCLE", "onCreateView");
 
         homeViewModel = new ViewModelProvider(this).get(HomeViewModel.class);
 
@@ -122,6 +147,8 @@ public class HomeFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         mapFragment = (SupportMapFragment) getChildFragmentManager().findFragmentById(R.id.map);
+
+        Log.d("#LIFE-CYCLE", "onViewCreated");
 
         if (mapFragment != null) {
             mapFragment.getMapAsync(callback);
@@ -154,8 +181,7 @@ public class HomeFragment extends Fragment {
             return false;
         };
 
-        aqicnService.getAllStationss();
-
+//        aqicnService.getAllStations();
     }
 
     // Register the permissions callback, which handles the user's response to the
@@ -171,4 +197,30 @@ public class HomeFragment extends Fragment {
                         }
                     }
             );
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        Log.d("#LIFE-CYCLE", "onPause " + HomeViewModel.getStationList().size());
+        HomeViewModel.clearStationsList();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        aqicnService.getAllStations();
+        Log.d("#LIFE-CYCLE", "onResume " + HomeViewModel.getStationList().size());
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        Log.d("#LIFE-CYCLE", "onStop");
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        Log.d("#LIFE-CYCLE", "onDestroy");
+    }
 }
