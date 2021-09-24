@@ -9,12 +9,19 @@
             android:icon="@drawable/ic_home"
             android:title="@string/menu_home" />
         <item
-            android:id="@+id/nav_map"
-            android:icon="@drawable/ic_menu_gallery"
-            android:title="@string/menu_maps" />
+            android:id="@+id/nav_statistics"
+            android:icon="@drawable/outline_bar_chart_24"
+            android:title="@string/menu_statistics" />
         <item
             android:id="@+id/nav_chat"
             android:icon="@drawable/ic_message"
             android:title="@string/menu_chat" />
+    </group>
+
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/nav_logout"
+            android:icon="@drawable/ic_home"
+            android:title="Logout" />
     </group>
 </menu>

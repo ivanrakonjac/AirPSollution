@@ -12,9 +12,9 @@
         tools:layout="@layout/fragment_home" />
 
     <fragment
-        android:id="@+id/nav_map"
-        android:name="com.ika.airpsollution.ui.gallery.MapsFragment"
-        android:label="@string/menu_maps"
+        android:id="@+id/nav_statistics"
+        android:name="com.ika.airpsollution.ui.gallery.StatisticsFragment"
+        android:label="@string/menu_statistics"
         tools:layout="@layout/fragment_maps" />
 
     <fragment
