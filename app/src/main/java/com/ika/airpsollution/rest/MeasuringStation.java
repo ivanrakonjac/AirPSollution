@@ -34,10 +34,23 @@ public class MeasuringStation {
     public double[] co;
     public double[] o3;
 
+    public double[] getPM10Array(){
+        return pm10;
+    }
+
+    public double[] getPM25Array(){
+        return pm25;
+    }
+
+    public double[] getSO2Array(){ return so2; }
+
+    public double[] getNO2Array(){ return no2;}
+
+    public double[] getCOArray(){ return co; }
+
     public void setPm10(double[] pm10) {
         this.pm10 = pm10;
     }
-
 
     public void setLat(double lat) {
         this.lat = lat;

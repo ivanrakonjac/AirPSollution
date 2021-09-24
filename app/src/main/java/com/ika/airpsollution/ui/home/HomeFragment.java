@@ -94,7 +94,7 @@ public class HomeFragment extends Fragment {
                 double m = ms.getPm10(0);
 
                 String snippet =    "PM10: " + ms.getPm10(0) + " μg/m3 " +
-                                    "PM25: " + ms.getPm25(0) + "μg/m3";
+                                    "PM25: " + ms.getPm25(0) + " μg/m3";
 
                 if(ms.getPm10(0)> 60 || ms.getPm25(0) > 30){
                     googleMap.addMarker(new MarkerOptions().position(latLng).title(ms.name).snippet(snippet)
@@ -202,12 +202,13 @@ public class HomeFragment extends Fragment {
     public void onPause() {
         super.onPause();
         Log.d("#LIFE-CYCLE", "onPause " + HomeViewModel.getStationList().size());
-        HomeViewModel.clearStationsList();
+
     }
 
     @Override
     public void onResume() {
         super.onResume();
+        HomeViewModel.clearStationsList();
         aqicnService.getAllStations();
         Log.d("#LIFE-CYCLE", "onResume " + HomeViewModel.getStationList().size());
     }

@@ -30,6 +30,10 @@ public class HomeViewModel extends ViewModel {
         return stationsData;
     }
 
+    public static MeasuringStation getMeasuringStation(int index){
+        return stationsList.get(index);
+    }
+
     public static void setMeasurements(int stationIndex, double[] measurments){
         stationsList.get(stationIndex).setPm10(measurments);
 
