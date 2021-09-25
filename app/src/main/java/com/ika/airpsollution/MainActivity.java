@@ -1,28 +1,43 @@
 package com.ika.airpsollution;
 
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.Menu;
 import android.view.View;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.bumptech.glide.Glide;
 import com.firebase.ui.auth.AuthUI;
 import com.firebase.ui.auth.FirebaseAuthUIActivityResultContract;
 import com.firebase.ui.auth.IdpResponse;
 import com.firebase.ui.auth.data.model.FirebaseAuthUIAuthenticationResult;
+import com.google.android.gms.tasks.Continuation;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
+import com.ika.airpsollution.db.FirebaseDB;
+import com.ika.airpsollution.db.FirebaseStorageDB;
+import com.ika.airpsollution.messages.Message;
 import com.ika.airpsollution.ui.slideshow.ChatFragment;
 
 import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBarDrawerToggle;
+import androidx.core.content.ContextCompat;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 import androidx.navigation.ui.AppBarConfiguration;
@@ -48,6 +63,7 @@ public class MainActivity extends AppCompatActivity {
     private FirebaseAuth.AuthStateListener mAuthStateListener;
 
     private ImageButton photoPickerButton;
+
 
     private final ActivityResultLauncher<Intent> signInLauncher = registerForActivityResult(
             new FirebaseAuthUIActivityResultContract(),
@@ -77,6 +93,8 @@ public class MainActivity extends AppCompatActivity {
             FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
             MainActivity.userName = user.getDisplayName();
             Toast.makeText(this,"You are signed in!",Toast.LENGTH_SHORT).show();
+
+            onUserChanged();
         }
         else if(result.getResultCode() == RESULT_CANCELED) finishAffinity();
         else Toast.makeText(this,"Sign in failed!",Toast.LENGTH_SHORT).show();
@@ -112,21 +130,47 @@ public class MainActivity extends AppCompatActivity {
             userName = user.getDisplayName();
         }
 
-        View headerView = navigationView.getHeaderView(0);
-        TextView userNameTextView= (TextView) headerView.findViewById(R.id.userNameTextView);
-        userNameTextView.setText(user.getDisplayName());
+        onUserChanged();
 
-        photoPickerButton = (ImageButton) headerView.findViewById(R.id.userPhotoPickerBtn);
-
-        photoPickerButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-                intent.setType("image/jpeg");
-                intent.putExtra(Intent.EXTRA_LOCAL_ONLY, true);
-                startActivityForResult(Intent.createChooser(intent, "Complete action using"), RC_PHOTO_PICKER);
-            }
-        });
+//        View headerView = navigationView.getHeaderView(0);
+//        TextView userNameTextView= (TextView) headerView.findViewById(R.id.userNameTextView);
+//        userNameTextView.setText(user.getDisplayName());
+//
+//        photoPickerButton = (ImageButton) headerView.findViewById(R.id.userPhotoPickerBtn);
+//
+//        photoPickerButton.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View view) {
+//                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+//                intent.setType("image/jpeg");
+//                intent.putExtra(Intent.EXTRA_LOCAL_ONLY, true);
+//                startActivityForResult(Intent.createChooser(intent, "Complete action using"), RC_PHOTO_PICKER);
+//            }
+//        });
+//
+//        StorageReference photoRef = FirebaseStorageDB.getProfilePhotosReference().child(userName);
+//
+//        photoRef.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
+//            @Override
+//            public void onSuccess(Uri uri) {
+//
+//                NavigationView navigationView = findViewById(R.id.nav_view);
+//                View headerView = navigationView.getHeaderView(0);
+//                ImageView profilePhoto= (ImageView) headerView.findViewById(R.id.imageView);
+//
+//                Glide.with(getBaseContext())
+//                        .load(uri.toString())
+//                        .into(profilePhoto);
+//            }
+//        }).addOnFailureListener(new OnFailureListener() {
+//            @Override
+//            public void onFailure(@NonNull Exception exception) {
+//                // Handle any errors
+//                NavigationView navigationView = findViewById(R.id.nav_view);
+//                View headerView = navigationView.getHeaderView(0);
+//                ImageView profilePhoto= (ImageView) headerView.findViewById(R.id.imageView);
+//            }
+//        });
 
     }
 
@@ -148,6 +192,8 @@ public class MainActivity extends AppCompatActivity {
                 ChatFragment.clearMessageAdapter();
                 ChatFragment.detachDatabaseReadListener();
 
+                userName = ANONYMOUS;
+
                 signInLauncher.launch(signInIntent);
             default:
                 return super.onOptionsItemSelected(item);
@@ -162,13 +208,100 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    protected void onPause() {
-        super.onPause();
+    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if(requestCode == RC_PHOTO_PICKER && resultCode == RESULT_OK){
+
+            Uri selectedImageUri = data.getData();
+            StorageReference photoRef = FirebaseStorageDB.getProfilePhotosReference().child(userName);
+
+            Toast.makeText(this,"Izabrana slika " + selectedImageUri.getLastPathSegment(),Toast.LENGTH_SHORT).show();
+
+            // Upload file to Firebase Storage
+
+            UploadTask uploadTask = photoRef.putFile(selectedImageUri);
+
+            Task<Uri> urlTask = uploadTask.continueWithTask(new Continuation<UploadTask.TaskSnapshot, Task<Uri>>() {
+                @Override
+                public Task<Uri> then(@NonNull Task<UploadTask.TaskSnapshot> task) throws Exception {
+                    if (!task.isSuccessful()) {
+                        throw task.getException();
+                    }
+
+                    // Continue with the task to get the download URL
+                    return photoRef.getDownloadUrl();
+                }
+
+            }).addOnCompleteListener(new OnCompleteListener<Uri>() {
+                @Override
+                public void onComplete(@NonNull Task<Uri> task) {
+                    if (task.isSuccessful()) {
+                        Uri downloadUri = task.getResult();
+
+                        NavigationView navigationView = findViewById(R.id.nav_view);
+                        View headerView = navigationView.getHeaderView(0);
+                        ImageView profilePhoto= (ImageView) headerView.findViewById(R.id.imageView);
+
+                        Glide.with(getBaseContext())
+                                .load(downloadUri.toString())
+                                .into(profilePhoto);
+
+                    } else {
+                        // Handle failures
+                        // ...
+                    }
+                }
+            });
+
+        }
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
+    private void onUserChanged(){
+
+        NavigationView navigationView = findViewById(R.id.nav_view);
+        View headerView = navigationView.getHeaderView(0);
+        TextView userNameTextView= (TextView) headerView.findViewById(R.id.userNameTextView);
+        userNameTextView.setText(MainActivity.userName);
+
+        if(photoPickerButton == null){
+            photoPickerButton = (ImageButton) headerView.findViewById(R.id.userPhotoPickerBtn);
+
+            photoPickerButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                    intent.setType("image/jpeg");
+                    intent.putExtra(Intent.EXTRA_LOCAL_ONLY, true);
+                    startActivityForResult(Intent.createChooser(intent, "Complete action using"), RC_PHOTO_PICKER);
+                }
+            });
+        }
+
+        StorageReference photoRef = FirebaseStorageDB.getProfilePhotosReference().child(userName);
+
+        photoRef.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
+            @Override
+            public void onSuccess(Uri uri) {
+
+                NavigationView navigationView = findViewById(R.id.nav_view);
+                View headerView = navigationView.getHeaderView(0);
+                ImageView profilePhoto= (ImageView) headerView.findViewById(R.id.imageView);
+
+                Glide.with(getBaseContext())
+                        .load(uri.toString())
+                        .into(profilePhoto);
+            }
+
+        }).addOnFailureListener(new OnFailureListener() {
+            @Override
+            public void onFailure(@NonNull Exception exception) {
+                // Handle any errors
+                NavigationView navigationView = findViewById(R.id.nav_view);
+                View headerView = navigationView.getHeaderView(0);
+                ImageView profilePhoto= (ImageView) headerView.findViewById(R.id.imageView);
+                profilePhoto.setImageDrawable(ContextCompat.getDrawable(getBaseContext(), R.drawable.outline_person_24));
+            }
+        });
     }
 
 }
