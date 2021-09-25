@@ -1,6 +1,9 @@
 package com.ika.airpsollution;
 
+import android.Manifest;
+import android.app.PendingIntent;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -17,6 +20,10 @@ import com.firebase.ui.auth.AuthUI;
 import com.firebase.ui.auth.FirebaseAuthUIActivityResultContract;
 import com.firebase.ui.auth.IdpResponse;
 import com.firebase.ui.auth.data.model.FirebaseAuthUIAuthenticationResult;
+import com.google.android.gms.location.Geofence;
+import com.google.android.gms.location.GeofencingClient;
+import com.google.android.gms.location.GeofencingRequest;
+import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.Continuation;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
@@ -29,6 +36,7 @@ import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
 import com.ika.airpsollution.db.FirebaseDB;
 import com.ika.airpsollution.db.FirebaseStorageDB;
+import com.ika.airpsollution.geofences.GeofenceBroadcastReceiver;
 import com.ika.airpsollution.messages.Message;
 import com.ika.airpsollution.ui.slideshow.ChatFragment;
 
@@ -37,6 +45,7 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBarDrawerToggle;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
@@ -47,11 +56,12 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
 import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final int RC_PHOTO_PICKER =  2;
+    private static final int RC_PHOTO_PICKER = 2;
 
     private AppBarConfiguration mAppBarConfiguration;
 
@@ -64,6 +74,9 @@ public class MainActivity extends AppCompatActivity {
 
     private ImageButton photoPickerButton;
 
+    private GeofencingClient geofencingClient;
+    private List<Geofence> geofenceList = new LinkedList<>();
+    private PendingIntent geofencePendingIntent = null;
 
     private final ActivityResultLauncher<Intent> signInLauncher = registerForActivityResult(
             new FirebaseAuthUIActivityResultContract(),
@@ -92,12 +105,11 @@ public class MainActivity extends AppCompatActivity {
         if (result.getResultCode() == RESULT_OK) {
             FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
             MainActivity.userName = user.getDisplayName();
-            Toast.makeText(this,"You are signed in!",Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "You are signed in!", Toast.LENGTH_SHORT).show();
 
             onUserChanged();
-        }
-        else if(result.getResultCode() == RESULT_CANCELED) finishAffinity();
-        else Toast.makeText(this,"Sign in failed!",Toast.LENGTH_SHORT).show();
+        } else if (result.getResultCode() == RESULT_CANCELED) finishAffinity();
+        else Toast.makeText(this, "Sign in failed!", Toast.LENGTH_SHORT).show();
 
     }
 
@@ -105,6 +117,44 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        /*
+        geofencingClient = LocationServices.getGeofencingClient(this);
+
+        geofenceList.add(new Geofence.Builder()
+                // Set the request ID of the geofence. This is a string to identify this
+                // geofence.
+                .setRequestId("ETF")
+
+                .setCircularRegion(
+                        44.866316905728844, 20.665574277113578,
+                        100
+                )
+                .setExpirationDuration(86400000)
+                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER | Geofence.GEOFENCE_TRANSITION_EXIT)
+                .build());
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        geofencingClient.addGeofences(getGeofencingRequest(), getGeofencePendingIntent())
+                .addOnSuccessListener(this, new OnSuccessListener<Void>() {
+                    @Override
+                    public void onSuccess(Void aVoid) {
+                        // Geofences added
+                        // ...
+                        Log.d("#GEOFENCE", "Dodato");
+                    }
+                })
+                .addOnFailureListener(this, new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                        // Failed to add geofences
+                        // ...
+                        Log.d("#GEOFENCE", e.toString());
+                    }
+                });
+        */
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -131,46 +181,6 @@ public class MainActivity extends AppCompatActivity {
         }
 
         onUserChanged();
-
-//        View headerView = navigationView.getHeaderView(0);
-//        TextView userNameTextView= (TextView) headerView.findViewById(R.id.userNameTextView);
-//        userNameTextView.setText(user.getDisplayName());
-//
-//        photoPickerButton = (ImageButton) headerView.findViewById(R.id.userPhotoPickerBtn);
-//
-//        photoPickerButton.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View view) {
-//                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-//                intent.setType("image/jpeg");
-//                intent.putExtra(Intent.EXTRA_LOCAL_ONLY, true);
-//                startActivityForResult(Intent.createChooser(intent, "Complete action using"), RC_PHOTO_PICKER);
-//            }
-//        });
-//
-//        StorageReference photoRef = FirebaseStorageDB.getProfilePhotosReference().child(userName);
-//
-//        photoRef.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
-//            @Override
-//            public void onSuccess(Uri uri) {
-//
-//                NavigationView navigationView = findViewById(R.id.nav_view);
-//                View headerView = navigationView.getHeaderView(0);
-//                ImageView profilePhoto= (ImageView) headerView.findViewById(R.id.imageView);
-//
-//                Glide.with(getBaseContext())
-//                        .load(uri.toString())
-//                        .into(profilePhoto);
-//            }
-//        }).addOnFailureListener(new OnFailureListener() {
-//            @Override
-//            public void onFailure(@NonNull Exception exception) {
-//                // Handle any errors
-//                NavigationView navigationView = findViewById(R.id.nav_view);
-//                View headerView = navigationView.getHeaderView(0);
-//                ImageView profilePhoto= (ImageView) headerView.findViewById(R.id.imageView);
-//            }
-//        });
 
     }
 
@@ -303,5 +313,27 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+
+    private GeofencingRequest getGeofencingRequest() {
+        GeofencingRequest.Builder builder = new GeofencingRequest.Builder();
+        builder.setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER);
+        builder.addGeofences(geofenceList);
+        return builder.build();
+    }
+
+    private PendingIntent getGeofencePendingIntent() {
+        // Reuse the PendingIntent if we already have it.
+        if (geofencePendingIntent != null) {
+            return geofencePendingIntent;
+        }
+        Intent intent = new Intent(this, GeofenceBroadcastReceiver.class);
+        // We use FLAG_UPDATE_CURRENT so that we get the same pending intent back when
+        // calling addGeofences() and removeGeofences().
+        geofencePendingIntent = PendingIntent.getBroadcast(this, 0, intent, PendingIntent.
+                FLAG_UPDATE_CURRENT);
+        return geofencePendingIntent;
+    }
+
+
 
 }
